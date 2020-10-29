@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
+          integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
+          crossorigin="anonymous">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"
+          integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw=="
+          crossorigin="anonymous">
+  </script>
+
+  <style>
+      div {
+          margin-bottom: 15px;
+      }
+
+      #canvas {
+          max-width: 1500px;
+      }
+  </style>
+</head>
+
+<body>
+<h1>Show Bitcoin rates</h1>
+
+<form>
+  <div>
+    <label for="period_start">From:</label>
+    <input type="datetime-local" id="period_start" name="period_start" value=<%= 1.hour.ago.strftime('%FT%T') %>>
+  </div>
+
+  <div>
+    <label for="period_end">Till:</label>
+    <input type="datetime-local" id="period_end" name="period_end" value=<%= Time.current.strftime('%FT%T') %>>
+  </div>
+
+  <div>
+    <label for="period">Period:</label>
+    <select id="period" name="period">
+      <option selected value="minute">minute</option>
+      <option value="hour">hour</option>
+      <option value="day">day</option>
+      <option value="week">week</option>
+      <option value="month">month</option>
+      <option value="year">year</option>
+    </select>
+  </div>
+
+  <input type="submit">
+</form>
+<div id='canvas'>
+  <canvas id="chart"></canvas>
+</div>
+</body>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    let ctx = document.getElementById('chart');
+    let chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: 'rate',
+          data: [],
+          backgroundColor: ['rgba(255, 99, 132, 0.2)'],
+          borderColor: ['rgba(255, 99, 132, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        animation: {
+          duration: 0
+        },
+        scales: {
+          xAxes: [{
+            type: 'time',
+            distribution: 'series',
+            offset: true,
+            // time: {
+            //   unit: 'day'
+            // }
+          }]
+        }
+      }
+    });
+
+    document.querySelector('form').addEventListener('submit', async function (event) {
+      event.preventDefault()
+
+      let { rates, period } = await submitForm()
+      chart.config.data.datasets[0].data =
+        rates.map(({ rate, period_start }) => ({ y: rate, x: period_start }))
+      // chart.config.options.scales.xAxes[0].time.unit = period
+      chart.update()
+    });
+  });
+
+
+  async function submitForm() {
+    const form = document.querySelector('form');
+    const formData = new FormData(form);
+    const url = new URL('http://127.0.0.1:3000/api/bitcoin_rates')
+    url.search = new URLSearchParams(formData.entries()).toString();
+    let response = await fetch(url);
+
+    if (response.ok) {
+      let json = await response.json();
+
+      return { rates: json.objects, period: formData.get('period') }
+    } else {
+      alert("Ошибка HTTP: " + response.status);
+    }
+  }
+</script>
+</html>

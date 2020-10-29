@@ -1,0 +1,7 @@
+:schedule:
+  FetchBitcoinRateWorker:
+#    every: '10s'
+    cron: '0 * * * * *'   # Runs once per minute
+
+  FixMissingRatesWorker:
+    cron: '0 */15 * * * *'   # Runs once per minute
